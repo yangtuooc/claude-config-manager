@@ -281,21 +281,12 @@ A: 您可以编辑 `src/constants.ts` 文件中的 `CONFIG_TEMPLATES` 数组，�
 
 欢迎提交 Issue 和 Pull Request！
 
-## 许可证
-
-MIT License
-
-## 作者
-
-[Your Name]
+请参阅 [RELEASE.md](./RELEASE.md) 了解版本发布流程。
 
 ## 更新日志
 
-### v1.0.0 (2024-10-16)
+查看 [CHANGELOG.md](./CHANGELOG.md) 了解详细的更新历史。
 
-- 🎉 首次发布
-- ✨ 支持配置的增删改查
-- ✨ 支持快速切换配置
-- ✨ 预设配置模板
-- ✨ 彩色终端输出
-- ✨ 交互式命令
+## 许可证
+
+MIT License
