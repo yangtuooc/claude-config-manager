@@ -177,3 +177,131 @@ Claude Code 的配置文件通常位于：
 - 函数保持简洁，单个函数不超过 50 行
 - 避免使用 any 类型，必要时使用 unknown
 - 所有异步操作使用 async/await
+
+## 版本发布规范
+
+### 11. Git 工作流
+
+#### 11.1 分支管理
+- **main 分支**：主分支，受保护，只能通过 PR 合并
+- **feature/***: 功能开发分支
+- **fix/***: 问题修复分支
+- **chore/***: 配置和工具相关的修改分支
+
+#### 11.2 提交规范
+遵循 Conventional Commits 规范：
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**常用 type：**
+- `feat`: 新功能
+- `fix`: 修复 bug
+- `docs`: 文档更新
+- `style`: 代码格式调整（不影响功能）
+- `refactor`: 重构代码
+- `perf`: 性能优化
+- `test`: 测试相关
+- `build`: 构建系统或外部依赖变更
+- `ci`: CI 配置变更
+- `chore`: 其他不修改源代码的更改
+
+**示例：**
+```bash
+feat(api): 添加配置导出功能
+fix(config): 修复配置切换时的路径错误
+chore(npm): 配置 npm 包发布
+```
+
+#### 11.3 代码提交流程
+
+**重要原则：永远不要直接推送到 main 分支！**
+
+1. **创建功能分支**
+   ```bash
+   git checkout -b feature/your-feature-name
+   # 或
+   git checkout -b fix/bug-description
+   # 或
+   git checkout -b chore/task-description
+   ```
+
+2. **开发并提交代码**
+   ```bash
+   git add .
+   git commit -m "feat: 功能描述"
+   ```
+
+3. **推送到远程分支**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+4. **创建 Pull Request**
+   - 在 GitHub 上创建 PR
+   - 填写清晰的 PR 描述
+   - 等待 CI 检查通过
+   - 代码审查通过后合并到 main
+
+### 12. npm 发布流程
+
+本项目使用 **release-please** 自动化版本管理和发布。
+
+#### 12.1 自动发布流程
+
+1. **提交符合规范的 commit 到 main 分支**
+   - 通过 PR 合并到 main
+   - release-please 会分析 commit 消息
+
+2. **release-please 自动创建 Release PR**
+   - 自动更新版本号（遵循语义化版本）
+   - 自动生成 CHANGELOG.md
+   - PR 标题格式：`chore(main): release x.x.x`
+
+3. **合并 Release PR 触发发布**
+   - 自动构建项目（`npm run build`）
+   - 自动发布到 npm（`npm publish`）
+   - 自动创建 GitHub Release
+
+#### 12.2 版本号规则
+
+遵循语义化版本（Semantic Versioning）：`MAJOR.MINOR.PATCH`
+
+- `feat`: 增加 MINOR 版本（例如：1.0.0 → 1.1.0）
+- `fix`: 增加 PATCH 版本（例如：1.0.0 → 1.0.1）
+- `BREAKING CHANGE`: 增加 MAJOR 版本（例如：1.0.0 → 2.0.0）
+
+**触发 BREAKING CHANGE 的方式：**
+```bash
+git commit -m "feat!: 重构 API 接口"
+# 或
+git commit -m "feat: 重构 API 接口
+
+BREAKING CHANGE: API 接口签名已更改"
+```
+
+#### 12.3 发布前检查清单
+
+- [ ] 代码已通过所有测试
+- [ ] TypeScript 编译无错误
+- [ ] 更新了相关文档
+- [ ] commit 消息符合规范
+- [ ] 通过功能分支 PR 合并到 main
+- [ ] 确保 npm token 已配置（GitHub Secrets: `NPM_TOKEN`）
+
+#### 12.4 手动发布（仅限紧急情况）
+
+如需手动发布，执行：
+```bash
+npm run build
+npm version patch  # 或 minor, major
+npm publish --access public
+git push --tags
+```
+
+⚠️ **注意：优先使用自动发布流程，手动发布仅用于紧急情况！**
