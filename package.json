@@ -12,8 +12,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "prebuild": "tsx scripts/generate-version.ts",
+    "build": "npm run prebuild && tsc",
+    "dev": "npm run prebuild && tsc --watch",
     "start": "node dist/cli.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublishOnly": "npm run build"
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
     "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {

@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { VERSION } from './version';
 import { createConfigManager } from './config-manager';
 import { addCommand, listTemplates } from './commands/add';
 import { listCommand, showCommand } from './commands/list';
@@ -14,7 +15,7 @@ const program = new Command();
 program
   .name('ccm')
   .description('Claude Code API 配置管理工具')
-  .version('1.0.0');
+  .version(VERSION, '-v, --version');
 
 // add 命令 - 添加新配置
 program
