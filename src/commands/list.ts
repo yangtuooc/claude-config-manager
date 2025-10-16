@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { ConfigManager } from '../config-manager';
+import { getActiveApiKey, maskApiKey } from '../utils/config-helpers';
 
 /**
  * 列出所有配置命令
@@ -89,26 +90,21 @@ export async function showCommand(manager: ConfigManager, name: string): Promise
   const activeConfig = await manager.getActiveConfig();
   const isActive = activeConfig?.name === name;
 
+  // 获取活动 API Key
+  const apiKey = getActiveApiKey(config);
+  const keysCount = config.keys.length;
+
   console.log('\n' + chalk.bold('配置详情:') + '\n');
   console.log(chalk.cyan('名称:       ') + config.name);
   console.log(chalk.cyan('类型:       ') + formatType(config.type));
   console.log(chalk.cyan('Base URL:   ') + config.baseUrl);
-  console.log(chalk.cyan('API Key:    ') + maskApiKey(config.apiKey));
+  console.log(chalk.cyan('API Keys:   ') + `${keysCount} 个`);
+  if (apiKey) {
+    console.log(chalk.cyan('活动 Key:   ') + maskApiKey(apiKey));
+  }
   console.log(chalk.cyan('描述:       ') + (config.description || '-'));
   console.log(chalk.cyan('状态:       ') + (isActive ? chalk.green('活动') : chalk.gray('未激活')));
   console.log(chalk.gray('创建时间:   ') + new Date(config.createdAt).toLocaleString('zh-CN'));
   console.log(chalk.gray('更新时间:   ') + new Date(config.updatedAt).toLocaleString('zh-CN'));
   console.log('');
-}
-
-/**
- * 隐藏 API Key 中间部分
- */
-function maskApiKey(apiKey: string): string {
-  if (apiKey.length <= 10) {
-    return '*'.repeat(apiKey.length);
-  }
-  const start = apiKey.substring(0, 4);
-  const end = apiKey.substring(apiKey.length - 4);
-  return `${start}${'*'.repeat(apiKey.length - 8)}${end}`;
 }

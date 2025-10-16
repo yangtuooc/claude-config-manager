@@ -9,6 +9,7 @@ import { listCommand, showCommand } from './commands/list';
 import { switchCommand } from './commands/switch';
 import { removeCommand } from './commands/remove';
 import { updateCommand } from './commands/update';
+import { keyAddCommand, keyListCommand, keySwitchCommand, keyRemoveCommand } from './commands/key';
 
 const program = new Command();
 
@@ -129,6 +130,65 @@ program
       console.log('');
     } catch (error) {
       console.log(chalk.red('获取当前配置失败'));
+      process.exit(1);
+    }
+  });
+
+// key 命令 - 管理配置的多个 API Keys
+const keyCommand = program.command('key').description('管理配置的 API Keys');
+
+// key add 子命令
+keyCommand
+  .command('add [config-name]')
+  .description('为配置添加新的 API Key')
+  .option('-k, --api-key <key>', 'API Key')
+  .option('-a, --alias <alias>', 'Key 别名')
+  .action(async (configName, options) => {
+    try {
+      const manager = await createConfigManager();
+      await keyAddCommand(manager, configName, options);
+    } catch (error) {
+      process.exit(1);
+    }
+  });
+
+// key list 子命令
+keyCommand
+  .command('list [config-name]')
+  .alias('ls')
+  .description('列出配置的所有 API Keys')
+  .action(async (configName) => {
+    try {
+      const manager = await createConfigManager();
+      await keyListCommand(manager, configName);
+    } catch (error) {
+      process.exit(1);
+    }
+  });
+
+// key switch 子命令
+keyCommand
+  .command('switch [config-name] [key-id-or-alias]')
+  .description('切换配置的活动 API Key')
+  .action(async (configName, keyIdOrAlias) => {
+    try {
+      const manager = await createConfigManager();
+      await keySwitchCommand(manager, configName, keyIdOrAlias);
+    } catch (error) {
+      process.exit(1);
+    }
+  });
+
+// key remove 子命令
+keyCommand
+  .command('remove [config-name] [key-id-or-alias]')
+  .alias('rm')
+  .description('删除配置的 API Key')
+  .action(async (configName, keyIdOrAlias) => {
+    try {
+      const manager = await createConfigManager();
+      await keyRemoveCommand(manager, configName, keyIdOrAlias);
+    } catch (error) {
       process.exit(1);
     }
   });
