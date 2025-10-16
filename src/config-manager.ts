@@ -151,14 +151,47 @@ export class ConfigManager {
   }
 
   /**
-   * 获取当前活动配置
-   * @returns 活动配置对象
+   * 从 Claude Code 配置文件中读取当前配置
+   * @returns Claude Code 的配置对象，如果文件不存在返回 undefined
    */
-  getActiveConfig(): IApiConfig | undefined {
-    if (!this.store.activeConfig) {
+  async getClaudeCodeConfig(): Promise<IClaudeConfig | undefined> {
+    try {
+      const content = await fs.readFile(CLAUDE_CONFIG_PATH, 'utf-8');
+      return JSON.parse(content);
+    } catch (error) {
+      // 配置文件不存在或读取失败
       return undefined;
     }
-    return this.getConfig(this.store.activeConfig);
+  }
+
+  /**
+   * 获取当前活动配置
+   * 通过读取 Claude Code 的实际配置文件来确定当前活动的配置
+   * @returns 活动配置对象
+   */
+  async getActiveConfig(): Promise<IApiConfig | undefined> {
+    // 读取 Claude Code 的实际配置
+    const claudeConfig = await this.getClaudeCodeConfig();
+
+    if (!claudeConfig || !claudeConfig.env) {
+      return undefined;
+    }
+
+    const { ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN } = claudeConfig.env;
+
+    if (!ANTHROPIC_AUTH_TOKEN) {
+      return undefined;
+    }
+
+    // 在配置列表中查找匹配的配置
+    // 通过 apiKey 和 baseUrl 来匹配
+    const matchedConfig = this.store.configs.find(
+      config =>
+        config.apiKey === ANTHROPIC_AUTH_TOKEN &&
+        (ANTHROPIC_BASE_URL ? config.baseUrl === ANTHROPIC_BASE_URL : true)
+    );
+
+    return matchedConfig;
   }
 
   /**
@@ -194,14 +227,27 @@ export class ConfigManager {
     // 确保 Claude 配置目录存在
     await fs.mkdir(CLAUDE_CONFIG_DIR, { recursive: true });
 
-    // 构建 Claude 配置
-    const claudeConfig: IClaudeConfig = {
-      apiKey: config.apiKey,
-      baseUrl: config.baseUrl
+    // 读取现有的 settings.json（如果存在）
+    let existingConfig: IClaudeConfig = {};
+    try {
+      const content = await fs.readFile(CLAUDE_CONFIG_PATH, 'utf-8');
+      existingConfig = JSON.parse(content);
+    } catch (error) {
+      // 文件不存在，使用空对象
+    }
+
+    // 更新 env 字段，保留其他字段
+    const updatedConfig: IClaudeConfig = {
+      ...existingConfig,
+      env: {
+        ...existingConfig.env,
+        ANTHROPIC_BASE_URL: config.baseUrl,
+        ANTHROPIC_AUTH_TOKEN: config.apiKey
+      }
     };
 
     // 写入 Claude 配置文件
-    const content = JSON.stringify(claudeConfig, null, 2);
+    const content = JSON.stringify(updatedConfig, null, 2);
     await fs.writeFile(CLAUDE_CONFIG_PATH, content, 'utf-8');
 
     // 设置为活动配置

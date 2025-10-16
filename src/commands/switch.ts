@@ -24,7 +24,7 @@ export async function switchCommand(
 
     // 如果没有指定配置名称，显示选择列表
     if (!targetName) {
-      const activeConfig = manager.getActiveConfig();
+      const activeConfig = await manager.getActiveConfig();
       const choices = configs.map(config => ({
         name: config.name === activeConfig?.name
           ? `${config.name} ${chalk.green('(当前)')}`
