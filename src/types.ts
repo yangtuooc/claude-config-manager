@@ -44,14 +44,18 @@ export interface IConfigStore {
 }
 
 /**
- * Claude Code 配置接口
+ * Claude Code 配置接口（settings.json 格式）
  */
 export interface IClaudeConfig {
-  /** API Key */
-  apiKey: string;
-
-  /** API Base URL */
-  baseUrl?: string;
+  /** 环境变量配置 */
+  env?: {
+    /** API Base URL */
+    ANTHROPIC_BASE_URL?: string;
+    /** API Auth Token */
+    ANTHROPIC_AUTH_TOKEN?: string;
+  };
+  /** 其他可能的配置字段 */
+  [key: string]: any;
 }
 
 /**

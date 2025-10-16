@@ -25,7 +25,7 @@ export const CLAUDE_CONFIG_DIR = join(homedir(), '.claude');
 /**
  * Claude Code 配置文件路径
  */
-export const CLAUDE_CONFIG_PATH = join(CLAUDE_CONFIG_DIR, 'config.json');
+export const CLAUDE_CONFIG_PATH = join(CLAUDE_CONFIG_DIR, 'settings.json');
 
 /**
  * 预设的配置模板

@@ -8,7 +8,7 @@ import { ConfigManager } from '../config-manager';
  */
 export async function listCommand(manager: ConfigManager): Promise<void> {
   const configs = manager.getAllConfigs();
-  const activeConfig = manager.getActiveConfig();
+  const activeConfig = await manager.getActiveConfig();
 
   if (configs.length === 0) {
     console.log(chalk.yellow('还没有任何配置'));
@@ -86,7 +86,8 @@ export async function showCommand(manager: ConfigManager, name: string): Promise
     return;
   }
 
-  const isActive = manager.getActiveConfig()?.name === name;
+  const activeConfig = await manager.getActiveConfig();
+  const isActive = activeConfig?.name === name;
 
   console.log('\n' + chalk.bold('配置详情:') + '\n');
   console.log(chalk.cyan('名称:       ') + config.name);

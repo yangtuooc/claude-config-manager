@@ -112,7 +112,7 @@ program
   .action(async () => {
     try {
       const manager = await createConfigManager();
-      const config = manager.getActiveConfig();
+      const config = await manager.getActiveConfig();
 
       if (!config) {
         console.log(chalk.yellow('没有活动配置'));

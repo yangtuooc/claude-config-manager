@@ -75,7 +75,7 @@ export async function removeCommand(
     console.log(chalk.green(`✓ 配置 "${targetName}" 已删除`));
 
     // 如果删除的是当前活动配置，提示
-    const activeConfig = manager.getActiveConfig();
+    const activeConfig = await manager.getActiveConfig();
     if (activeConfig && activeConfig.name !== targetName) {
       console.log(chalk.yellow(`当前活动配置已自动切换到: ${activeConfig.name}`));
     } else if (!activeConfig) {
