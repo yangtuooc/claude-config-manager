@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import { dirname } from 'path';
-import { IApiConfig, IConfigStore, IClaudeConfig } from './types';
+import { IApiConfig, IConfigStore, IClaudeConfig, IApiKey } from './types';
 import {
   CONFIG_VERSION,
   CONFIG_DIR,
@@ -8,6 +8,12 @@ import {
   CLAUDE_CONFIG_PATH,
   CLAUDE_CONFIG_DIR
 } from './constants';
+import {
+  migrateConfig,
+  getActiveKey,
+  getActiveApiKey,
+  generateKeyId
+} from './utils/config-helpers';
 
 /**
  * 配置管理器类
@@ -46,7 +52,17 @@ export class ConfigManager {
    */
   async load(): Promise<void> {
     const content = await fs.readFile(CONFIG_STORE_PATH, 'utf-8');
-    this.store = JSON.parse(content);
+    const rawStore = JSON.parse(content);
+
+    // 迁移所有配置到新格式
+    if (rawStore.configs && Array.isArray(rawStore.configs)) {
+      rawStore.configs = rawStore.configs.map((config: any) => migrateConfig(config));
+    }
+
+    this.store = rawStore;
+
+    // 如果有迁移，保存新格式
+    await this.save();
   }
 
   /**
@@ -59,18 +75,38 @@ export class ConfigManager {
 
   /**
    * 添加新配置
-   * @param config 配置对象
+   * @param config 配置对象（可以包含旧格式的 apiKey 字段）
    * @returns 是否添加成功
    */
-  async addConfig(config: Omit<IApiConfig, 'createdAt' | 'updatedAt'>): Promise<boolean> {
+  async addConfig(config: Omit<IApiConfig, 'createdAt' | 'updatedAt' | 'keys'> & { apiKey?: string; keys?: IApiKey[] }): Promise<boolean> {
     // 检查是否已存在同名配置
     if (this.store.configs.some(c => c.name === config.name)) {
       throw new Error(`配置 "${config.name}" 已存在`);
     }
 
     const now = new Date().toISOString();
+
+    // 处理 keys：如果传入了 apiKey，转换为 keys 数组
+    let keys: IApiKey[] = [];
+    if (config.apiKey) {
+      const keyId = generateKeyId();
+      keys = [{
+        id: keyId,
+        apiKey: config.apiKey,
+        isDefault: true,
+        createdAt: now
+      }];
+    } else if (config.keys) {
+      keys = config.keys;
+    }
+
     const newConfig: IApiConfig = {
-      ...config,
+      name: config.name,
+      keys,
+      activeKeyId: keys.length > 0 ? keys[0].id : undefined,
+      baseUrl: config.baseUrl,
+      type: config.type,
+      description: config.description,
       createdAt: now,
       updatedAt: now
     };
@@ -151,6 +187,138 @@ export class ConfigManager {
   }
 
   /**
+   * 为配置添加新的 API Key
+   * @param configName 配置名称
+   * @param apiKey API Key
+   * @param alias Key 别名（可选）
+   * @returns 是否添加成功
+   */
+  async addKey(configName: string, apiKey: string, alias?: string): Promise<boolean> {
+    const config = this.getConfig(configName);
+
+    if (!config) {
+      throw new Error(`配置 "${configName}" 不存在`);
+    }
+
+    // 检查是否已存在相同的 API Key
+    if (config.keys.some(k => k.apiKey === apiKey)) {
+      throw new Error('该 API Key 已存在');
+    }
+
+    // 检查别名是否已被使用
+    if (alias && config.keys.some(k => k.alias === alias)) {
+      throw new Error(`别名 "${alias}" 已被使用`);
+    }
+
+    const newKey: IApiKey = {
+      id: generateKeyId(),
+      apiKey,
+      alias,
+      isDefault: config.keys.length === 0, // 如果是第一个 Key，设为默认
+      createdAt: new Date().toISOString()
+    };
+
+    config.keys.push(newKey);
+    config.updatedAt = new Date().toISOString();
+
+    // 如果这是第一个 Key，设置为活动 Key
+    if (!config.activeKeyId) {
+      config.activeKeyId = newKey.id;
+    }
+
+    await this.save();
+    return true;
+  }
+
+  /**
+   * 删除配置中的 API Key
+   * @param configName 配置名称
+   * @param keyIdOrAlias Key ID 或别名
+   * @returns 是否删除成功
+   */
+  async removeKey(configName: string, keyIdOrAlias: string): Promise<boolean> {
+    const config = this.getConfig(configName);
+
+    if (!config) {
+      throw new Error(`配置 "${configName}" 不存在`);
+    }
+
+    const index = config.keys.findIndex(
+      k => k.id === keyIdOrAlias || k.alias === keyIdOrAlias
+    );
+
+    if (index === -1) {
+      throw new Error(`Key "${keyIdOrAlias}" 不存在`);
+    }
+
+    // 不允许删除最后一个 Key
+    if (config.keys.length === 1) {
+      throw new Error('不能删除最后一个 API Key');
+    }
+
+    const removedKey = config.keys[index];
+    config.keys.splice(index, 1);
+
+    // 如果删除的是活动 Key，切换到第一个 Key
+    if (config.activeKeyId === removedKey.id) {
+      config.activeKeyId = config.keys[0].id;
+    }
+
+    // 如果删除的是默认 Key，将第一个 Key 设为默认
+    if (removedKey.isDefault) {
+      config.keys[0].isDefault = true;
+    }
+
+    config.updatedAt = new Date().toISOString();
+    await this.save();
+    return true;
+  }
+
+  /**
+   * 切换配置的活动 API Key
+   * @param configName 配置名称
+   * @param keyIdOrAlias Key ID 或别名
+   * @returns 是否切换成功
+   */
+  async switchKey(configName: string, keyIdOrAlias: string): Promise<boolean> {
+    const config = this.getConfig(configName);
+
+    if (!config) {
+      throw new Error(`配置 "${configName}" 不存在`);
+    }
+
+    const key = config.keys.find(
+      k => k.id === keyIdOrAlias || k.alias === keyIdOrAlias
+    );
+
+    if (!key) {
+      throw new Error(`Key "${keyIdOrAlias}" 不存在`);
+    }
+
+    config.activeKeyId = key.id;
+    key.lastUsed = new Date().toISOString();
+    config.updatedAt = new Date().toISOString();
+
+    await this.save();
+    return true;
+  }
+
+  /**
+   * 列出配置的所有 API Keys
+   * @param configName 配置名称
+   * @returns Key 列表
+   */
+  listKeys(configName: string): IApiKey[] {
+    const config = this.getConfig(configName);
+
+    if (!config) {
+      throw new Error(`配置 "${configName}" 不存在`);
+    }
+
+    return [...config.keys];
+  }
+
+  /**
    * 从 Claude Code 配置文件中读取当前配置
    * @returns Claude Code 的配置对象，如果文件不存在返回 undefined
    */
@@ -184,12 +352,13 @@ export class ConfigManager {
     }
 
     // 在配置列表中查找匹配的配置
-    // 通过 apiKey 和 baseUrl 来匹配
-    const matchedConfig = this.store.configs.find(
-      config =>
-        config.apiKey === ANTHROPIC_AUTH_TOKEN &&
-        (ANTHROPIC_BASE_URL ? config.baseUrl === ANTHROPIC_BASE_URL : true)
-    );
+    // 通过遍历每个配置的 keys 来匹配 API Token
+    const matchedConfig = this.store.configs.find(config => {
+      // 检查配置中的任何一个 key 是否匹配
+      const hasMatchingKey = config.keys.some(key => key.apiKey === ANTHROPIC_AUTH_TOKEN);
+      const hasMatchingUrl = ANTHROPIC_BASE_URL ? config.baseUrl === ANTHROPIC_BASE_URL : true;
+      return hasMatchingKey && hasMatchingUrl;
+    });
 
     return matchedConfig;
   }
@@ -215,13 +384,30 @@ export class ConfigManager {
    * 应用配置到 Claude Code
    * 将指定配置写入 Claude Code 的配置文件
    * @param name 配置名称
+   * @param keyId 指定要使用的 Key ID（可选，默认使用活动 Key）
    * @returns 是否应用成功
    */
-  async applyToClaudeCode(name: string): Promise<boolean> {
+  async applyToClaudeCode(name: string, keyId?: string): Promise<boolean> {
     const config = this.getConfig(name);
 
     if (!config) {
       throw new Error(`配置 "${name}" 不存在`);
+    }
+
+    // 获取要使用的 API Key
+    let apiKey: string | undefined;
+    if (keyId) {
+      const key = config.keys.find(k => k.id === keyId);
+      if (!key) {
+        throw new Error(`Key ID "${keyId}" 不存在`);
+      }
+      apiKey = key.apiKey;
+    } else {
+      apiKey = getActiveApiKey(config);
+    }
+
+    if (!apiKey) {
+      throw new Error(`配置 "${name}" 没有可用的 API Key`);
     }
 
     // 确保 Claude 配置目录存在
@@ -242,7 +428,7 @@ export class ConfigManager {
       env: {
         ...existingConfig.env,
         ANTHROPIC_BASE_URL: config.baseUrl,
-        ANTHROPIC_AUTH_TOKEN: config.apiKey
+        ANTHROPIC_AUTH_TOKEN: apiKey
       }
     };
 

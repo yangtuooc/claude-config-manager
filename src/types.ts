@@ -4,14 +4,40 @@
 export type ApiConfigType = 'official' | 'third-party' | 'community';
 
 /**
+ * API Key 信息
+ */
+export interface IApiKey {
+  /** Key ID（唯一标识） */
+  id: string;
+
+  /** API Key */
+  apiKey: string;
+
+  /** 别名（可选） */
+  alias?: string;
+
+  /** 是否为默认 Key */
+  isDefault?: boolean;
+
+  /** 创建时间 */
+  createdAt: string;
+
+  /** 最后使用时间 */
+  lastUsed?: string;
+}
+
+/**
  * API 配置接口
  */
 export interface IApiConfig {
   /** 配置名称（唯一标识） */
   name: string;
 
-  /** API Key */
-  apiKey: string;
+  /** API Keys 列表 */
+  keys: IApiKey[];
+
+  /** 当前活动的 Key ID */
+  activeKeyId?: string;
 
   /** API Base URL */
   baseUrl: string;
@@ -27,6 +53,10 @@ export interface IApiConfig {
 
   /** 更新时间 */
   updatedAt: string;
+
+  // 以下字段用于向后兼容，不推荐使用
+  /** @deprecated 使用 keys 代替 */
+  apiKey?: string;
 }
 
 /**
