@@ -1,5 +1,9 @@
 # Claude Config Manager (CCM)
 
+[![npm version](https://img.shields.io/npm/v/claude-config-manager.svg)](https://www.npmjs.com/package/claude-config-manager)
+[![npm downloads](https://img.shields.io/npm/dm/claude-config-manager.svg)](https://www.npmjs.com/package/claude-config-manager)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Claude Code API 配置管理工具，支持多个 API 配置的集中管理和快速切换。
 
 ## 功能特性
@@ -13,27 +17,15 @@ Claude Code API 配置管理工具，支持多个 API 配置的集中管理和�
 
 ## 安装
 
-### 从源码安装
-
-```bash
-# 克隆项目
-git clone <repository-url>
-cd claude-config-manager
-
-# 安装依赖
-npm install
-
-# 编译 TypeScript
-npm run build
-
-# 全局安装（可选）
-npm link
-```
-
-### 使用 npm 安装（待发布）
-
 ```bash
 npm install -g claude-config-manager
+```
+
+安装完成后，你可以使用 `ccm` 命令：
+
+```bash
+ccm --version
+ccm --help
 ```
 
 ## 快速开始
