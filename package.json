@@ -6,11 +6,17 @@
   "bin": {
     "ccm": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/cli.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "claude",
@@ -18,10 +24,24 @@
     "api",
     "config",
     "manager",
-    "cli"
+    "cli",
+    "configuration",
+    "api-management",
+    "anthropic"
   ],
-  "author": "",
+  "author": "yangtuooc",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yangtuooc/claude-config-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yangtuooc/claude-config-manager/issues"
+  },
+  "homepage": "https://github.com/yangtuooc/claude-config-manager#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
     "@types/node": "^20.0.0",

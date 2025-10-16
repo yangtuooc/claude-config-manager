@@ -35,9 +35,12 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         run: npm run build
 
-      # 可选：发布到 npm
-      # - name: Publish to npm
-      #   if: ${{ steps.release.outputs.release_created }}
-      #   run: npm publish
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # 发布到 npm
+      - name: Setup .npmrc
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Publish to npm
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm publish --access public
