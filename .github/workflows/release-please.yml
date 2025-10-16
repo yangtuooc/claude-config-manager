@@ -1,0 +1,61 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          # 发布类型：Node.js 项目
+          release-type: node
+          # 包名称
+          package-name: claude-config-manager
+          # 自动生成 CHANGELOG
+          changelog-types: '[
+            {"type":"feat","section":"✨ Features","hidden":false},
+            {"type":"fix","section":"🐛 Bug Fixes","hidden":false},
+            {"type":"docs","section":"📚 Documentation","hidden":false},
+            {"type":"style","section":"💎 Styles","hidden":false},
+            {"type":"refactor","section":"♻️ Code Refactoring","hidden":false},
+            {"type":"perf","section":"⚡ Performance Improvements","hidden":false},
+            {"type":"test","section":"✅ Tests","hidden":false},
+            {"type":"build","section":"🔨 Build System","hidden":false},
+            {"type":"ci","section":"👷 CI/CD","hidden":false},
+            {"type":"chore","section":"🔧 Chores","hidden":true}
+          ]'
+
+      # 当 Release 被创建时，自动发布到 npm（可选）
+      - name: Checkout code
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm ci
+
+      - name: Build
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm run build
+
+      # 可选：发布到 npm
+      # - name: Publish to npm
+      #   if: ${{ steps.release.outputs.release_created }}
+      #   run: npm publish
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
