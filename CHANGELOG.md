@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/yangtuooc/claude-config-manager/compare/claude-config-manager-v0.1.3...claude-config-manager-v0.1.4) (2025-10-16)
+
+
+### Features
+
+* 支持同一站点维护多个 API Key ([#16](https://github.com/yangtuooc/claude-config-manager/issues/16)) ([49f0ada](https://github.com/yangtuooc/claude-config-manager/commit/49f0ada866ecbb5a5804a7fed9ea92d8401ef6b7))
+
 ## [0.1.3](https://github.com/yangtuooc/claude-config-manager/compare/claude-config-manager-v0.1.2...claude-config-manager-v0.1.3) (2025-10-16)
 
 
