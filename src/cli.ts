@@ -8,6 +8,7 @@ import { addCommand, listTemplates } from './commands/add';
 import { listCommand, showCommand } from './commands/list';
 import { switchCommand } from './commands/switch';
 import { removeCommand } from './commands/remove';
+import { updateCommand } from './commands/update';
 
 const program = new Command();
 
@@ -128,6 +129,18 @@ program
       console.log('');
     } catch (error) {
       console.log(chalk.red('获取当前配置失败'));
+      process.exit(1);
+    }
+  });
+
+// update 命令 - 检查并安装更新
+program
+  .command('update')
+  .description('检查并安装最新版本')
+  .action(async () => {
+    try {
+      await updateCommand();
+    } catch (error) {
       process.exit(1);
     }
   });
