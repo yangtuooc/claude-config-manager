@@ -357,3 +357,157 @@ export async function keyRemoveCommand(
     throw error;
   }
 }
+
+/**
+ * key edit 命令 - 编辑 API Key
+ */
+export async function keyEditCommand(
+  manager: ConfigManager,
+  configName?: string,
+  keyIdOrAlias?: string,
+  options: {
+    apiKey?: string;
+    alias?: string;
+  } = {}
+): Promise<void> {
+  try {
+    // 如果没有提供配置名称，交互式选择
+    if (!configName) {
+      const configs = manager.getAllConfigs();
+      if (configs.length === 0) {
+        console.log(chalk.yellow('还没有任何配置'));
+        console.log(chalk.gray('使用 "ccm add" 添加第一个配置'));
+        return;
+      }
+
+      const { selected } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'selected',
+          message: '选择要编辑 Key 的配置:',
+          choices: configs.map(c => ({
+            name: `${c.name} (${c.baseUrl})`,
+            value: c.name
+          }))
+        }
+      ]);
+      configName = selected;
+    }
+
+    const config = manager.getConfig(configName!);
+    if (!config) {
+      console.log(chalk.red(`配置 "${configName}" 不存在`));
+      return;
+    }
+
+    // 如果没有指定 keyIdOrAlias，交互式选择
+    if (!keyIdOrAlias) {
+      const keys = manager.listKeys(configName!);
+      if (keys.length === 0) {
+        console.log(chalk.yellow('没有可编辑的 Key'));
+        return;
+      }
+
+      const activeKey = getActiveKey(config);
+
+      const { selected } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'selected',
+          message: '选择要编辑的 Key:',
+          choices: keys.map(k => ({
+            name: `${k.alias || maskApiKey(k.apiKey)} ${activeKey?.id === k.id ? chalk.green('(当前)') : ''}`,
+            value: k.id
+          }))
+        }
+      ]);
+      keyIdOrAlias = selected;
+    }
+
+    // 获取要编辑的 key
+    const key = config.keys.find(k => k.id === keyIdOrAlias || k.alias === keyIdOrAlias);
+    if (!key) {
+      console.log(chalk.red(`Key "${keyIdOrAlias}" 不存在`));
+      return;
+    }
+
+    // 检查是否有命令行参数，如果没有则进入交互式模式
+    const hasOptions = options.apiKey || options.alias !== undefined;
+
+    let updates: Partial<{
+      apiKey: string;
+      alias: string;
+    }> = {};
+
+    if (!hasOptions) {
+      // 交互式模式
+      console.log(chalk.bold(`\n编辑 API Key: ${key.alias || maskApiKey(key.apiKey)}\n`));
+      console.log(chalk.gray('提示: 直接按 Enter 保持当前值不变\n'));
+
+      const answers = await inquirer.prompt([
+        {
+          type: 'password',
+          name: 'apiKey',
+          message: `API Key (当前: ${maskApiKey(key.apiKey)}):`,
+          mask: '*',
+          validate: (input: string) => {
+            if (input && !input.trim()) {
+              return 'API Key 不能为空';
+            }
+            return true;
+          }
+        },
+        {
+          type: 'input',
+          name: 'alias',
+          message: '别名:',
+          default: key.alias || ''
+        }
+      ]);
+
+      // 只有当用户输入了内容才更新
+      if (answers.apiKey) updates.apiKey = answers.apiKey;
+      if (answers.alias !== key.alias) updates.alias = answers.alias;
+    } else {
+      // 命令行参数模式
+      if (options.apiKey) updates.apiKey = options.apiKey;
+      if (options.alias !== undefined) updates.alias = options.alias;
+    }
+
+    // 确认是否有实际变更
+    if (Object.keys(updates).length === 0) {
+      console.log(chalk.yellow('没有任何变更'));
+      return;
+    }
+
+    // 更新 Key
+    await manager.updateKey(configName!, keyIdOrAlias!, updates);
+    console.log(chalk.green(`✓ 已更新 API Key`));
+
+    // 如果这是当前活动配置的活动 Key，询问是否同步到 Claude Code
+    const activeConfigName = manager.getActiveConfigName();
+    const activeKey = getActiveKey(config);
+    if (activeConfigName === configName && activeKey?.id === key.id) {
+      const { apply } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'apply',
+          message: '这是当前活动配置的活动 Key，是否同步到 Claude Code?',
+          default: true
+        }
+      ]);
+
+      if (apply) {
+        await manager.applyToClaudeCode(configName!);
+        console.log(chalk.green(`✓ 已同步到 Claude Code`));
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      console.log(chalk.red(`✗ ${error.message}`));
+    } else {
+      console.log(chalk.red('编辑 Key 失败'));
+    }
+    throw error;
+  }
+}
