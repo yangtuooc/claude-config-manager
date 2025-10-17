@@ -31,12 +31,22 @@ export async function editProfileCommand(
           type: 'list',
           name: 'selected',
           message: '选择要编辑的配置:',
-          choices: configs.map(c => ({
-            name: `${c.name} (${c.baseUrl})`,
-            value: c.name
-          }))
+          choices: [
+            ...configs.map(c => ({
+              name: `${c.name} (${c.baseUrl})`,
+              value: c.name
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       profileName = selected;
     }
 
@@ -149,6 +159,21 @@ export async function editProfileCommand(
 
     if (updates.type && !['official', 'third-party', 'community'].includes(updates.type)) {
       console.log(chalk.red('配置类型无效：必须是 official、third-party 或 community'));
+      return;
+    }
+
+    // 确认保存更改
+    const { confirmEdit } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmEdit',
+        message: '确认保存更改?',
+        default: true
+      }
+    ]);
+
+    if (!confirmEdit) {
+      console.log(chalk.gray('✖ 操作已取消'));
       return;
     }
 

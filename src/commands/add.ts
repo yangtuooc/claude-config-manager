@@ -112,6 +112,21 @@ export async function addCommand(
       return;
     }
 
+    // 最后确认
+    const { confirmAdd } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmAdd',
+        message: '确认添加此配置?',
+        default: true
+      }
+    ]);
+
+    if (!confirmAdd) {
+      console.log(chalk.gray('✖ 操作已取消'));
+      return;
+    }
+
     // 添加配置
     await manager.addConfig({
       name: config.name!,
