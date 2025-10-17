@@ -30,12 +30,22 @@ export async function keyAddCommand(
           type: 'list',
           name: 'selected',
           message: '选择要添加 Key 的配置:',
-          choices: configs.map(c => ({
-            name: `${c.name} (${c.baseUrl})`,
-            value: c.name
-          }))
+          choices: [
+            ...configs.map(c => ({
+              name: `${c.name} (${c.baseUrl})`,
+              value: c.name
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       configName = selected;
     }
 
@@ -78,6 +88,21 @@ export async function keyAddCommand(
       alias = answers.alias || undefined;
     }
 
+    // 确认添加
+    const { confirmAdd } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmAdd',
+        message: '确认添加此 API Key?',
+        default: true
+      }
+    ]);
+
+    if (!confirmAdd) {
+      console.log(chalk.gray('✖ 操作已取消'));
+      return;
+    }
+
     // 添加 Key
     await manager.addKey(configName!, apiKey!, alias);
 
@@ -117,12 +142,22 @@ export async function keyListCommand(
           type: 'list',
           name: 'selected',
           message: '选择要查看 Keys 的配置:',
-          choices: configs.map(c => ({
-            name: `${c.name} (${c.baseUrl})`,
-            value: c.name
-          }))
+          choices: [
+            ...configs.map(c => ({
+              name: `${c.name} (${c.baseUrl})`,
+              value: c.name
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       configName = selected;
     }
 
@@ -205,12 +240,22 @@ export async function keySwitchCommand(
           type: 'list',
           name: 'selected',
           message: '选择要切换 Key 的配置:',
-          choices: configs.map(c => ({
-            name: `${c.name} (${c.baseUrl})`,
-            value: c.name
-          }))
+          choices: [
+            ...configs.map(c => ({
+              name: `${c.name} (${c.baseUrl})`,
+              value: c.name
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       configName = selected;
     }
 
@@ -235,12 +280,22 @@ export async function keySwitchCommand(
           type: 'list',
           name: 'selected',
           message: '选择要切换到的 Key:',
-          choices: keys.map(k => ({
-            name: `${k.alias || maskApiKey(k.apiKey)} ${activeKey?.id === k.id ? chalk.green('(当前)') : ''}`,
-            value: k.id
-          }))
+          choices: [
+            ...keys.map(k => ({
+              name: `${k.alias || maskApiKey(k.apiKey)} ${activeKey?.id === k.id ? chalk.green('(当前)') : ''}`,
+              value: k.id
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       keyIdOrAlias = selected;
     }
 
@@ -294,12 +349,22 @@ export async function keyRemoveCommand(
           type: 'list',
           name: 'selected',
           message: '选择要删除 Key 的配置:',
-          choices: configs.map(c => ({
-            name: `${c.name} (${c.baseUrl})`,
-            value: c.name
-          }))
+          choices: [
+            ...configs.map(c => ({
+              name: `${c.name} (${c.baseUrl})`,
+              value: c.name
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       configName = selected;
     }
 
@@ -322,12 +387,22 @@ export async function keyRemoveCommand(
           type: 'list',
           name: 'selected',
           message: '选择要删除的 Key:',
-          choices: keys.map(k => ({
-            name: `${k.alias || maskApiKey(k.apiKey)} ${k.isDefault ? chalk.blue('(默认)') : ''}`,
-            value: k.id
-          }))
+          choices: [
+            ...keys.map(k => ({
+              name: `${k.alias || maskApiKey(k.apiKey)} ${k.isDefault ? chalk.blue('(默认)') : ''}`,
+              value: k.id
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       keyIdOrAlias = selected;
     }
 
@@ -385,12 +460,22 @@ export async function keyEditCommand(
           type: 'list',
           name: 'selected',
           message: '选择要编辑 Key 的配置:',
-          choices: configs.map(c => ({
-            name: `${c.name} (${c.baseUrl})`,
-            value: c.name
-          }))
+          choices: [
+            ...configs.map(c => ({
+              name: `${c.name} (${c.baseUrl})`,
+              value: c.name
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       configName = selected;
     }
 
@@ -415,12 +500,22 @@ export async function keyEditCommand(
           type: 'list',
           name: 'selected',
           message: '选择要编辑的 Key:',
-          choices: keys.map(k => ({
-            name: `${k.alias || maskApiKey(k.apiKey)} ${activeKey?.id === k.id ? chalk.green('(当前)') : ''}`,
-            value: k.id
-          }))
+          choices: [
+            ...keys.map(k => ({
+              name: `${k.alias || maskApiKey(k.apiKey)} ${activeKey?.id === k.id ? chalk.green('(当前)') : ''}`,
+              value: k.id
+            })),
+            new inquirer.Separator(),
+            { name: chalk.gray('取消'), value: '__cancel__' }
+          ]
         }
       ]);
+      
+      if (selected === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
+      
       keyIdOrAlias = selected;
     }
 
@@ -477,6 +572,21 @@ export async function keyEditCommand(
     // 确认是否有实际变更
     if (Object.keys(updates).length === 0) {
       console.log(chalk.yellow('没有任何变更'));
+      return;
+    }
+
+    // 确认保存更改
+    const { confirmEdit } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmEdit',
+        message: '确认保存更改?',
+        default: true
+      }
+    ]);
+
+    if (!confirmEdit) {
+      console.log(chalk.gray('✖ 操作已取消'));
       return;
     }
 

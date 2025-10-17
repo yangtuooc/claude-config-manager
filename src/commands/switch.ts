@@ -25,13 +25,17 @@ export async function switchCommand(
     // 如果没有指定配置名称，显示选择列表
     if (!targetName) {
       const activeConfig = await manager.getActiveConfig();
-      const choices = configs.map(config => ({
-        name: config.name === activeConfig?.name
-          ? `${config.name} ${chalk.green('(当前)')}`
-          : config.name,
-        value: config.name,
-        short: config.name
-      }));
+      const choices = [
+        ...configs.map(config => ({
+          name: config.name === activeConfig?.name
+            ? `${config.name} ${chalk.green('(当前)')}`
+            : config.name,
+          value: config.name,
+          short: config.name
+        })),
+        new inquirer.Separator(),
+        { name: chalk.gray('取消'), value: '__cancel__' }
+      ];
 
       const answers = await inquirer.prompt([
         {
@@ -42,6 +46,11 @@ export async function switchCommand(
           pageSize: 10
         }
       ]);
+
+      if (answers.config === '__cancel__') {
+        console.log(chalk.gray('✖ 操作已取消'));
+        return;
+      }
 
       targetName = answers.config;
     }
