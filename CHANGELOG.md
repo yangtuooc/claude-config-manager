@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.5](https://github.com/yangtuooc/claude-config-manager/compare/claude-config-manager-v0.1.4...claude-config-manager-v0.1.5) (2025-10-17)
+
+
+### Features
+
+* add unified exit/cancel functionality to all inquirer interactive commands ([3b507d9](https://github.com/yangtuooc/claude-config-manager/commit/3b507d923f6d6d306f3946cce62727a7d649790c))
+* **commands:** add edit profile and API key functionality ([9aa3e21](https://github.com/yangtuooc/claude-config-manager/commit/9aa3e21cf9b745ac0763956f3465d999ac8bd4f5))
+* **commands:** add exit/cancel support to all inquirer-based interactive commands ([d160d67](https://github.com/yangtuooc/claude-config-manager/commit/d160d67c7ed9057f40eed2e77de7e55deca1e040))
+* support editing existing profiles and API keys (interactive & CLI) ([36bf295](https://github.com/yangtuooc/claude-config-manager/commit/36bf295844e3076247e0c3c8f2489afcde880043))
+
 ## [0.1.4](https://github.com/yangtuooc/claude-config-manager/compare/claude-config-manager-v0.1.3...claude-config-manager-v0.1.4) (2025-10-16)
 
 
