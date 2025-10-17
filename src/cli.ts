@@ -9,7 +9,8 @@ import { listCommand, showCommand } from './commands/list';
 import { switchCommand } from './commands/switch';
 import { removeCommand } from './commands/remove';
 import { updateCommand } from './commands/update';
-import { keyAddCommand, keyListCommand, keySwitchCommand, keyRemoveCommand } from './commands/key';
+import { keyAddCommand, keyListCommand, keySwitchCommand, keyRemoveCommand, keyEditCommand } from './commands/key';
+import { editProfileCommand } from './commands/edit-profile';
 
 const program = new Command();
 
@@ -90,6 +91,23 @@ program
     try {
       const manager = await createConfigManager();
       await removeCommand(manager, name);
+    } catch (error) {
+      process.exit(1);
+    }
+  });
+
+// edit 命令 - 编辑配置
+program
+  .command('edit [name]')
+  .description('编辑 API 配置')
+  .option('-n, --name <name>', '新配置名称')
+  .option('-u, --base-url <url>', 'Base URL')
+  .option('-t, --type <type>', '配置类型 (official|third-party|community)')
+  .option('-d, --description <desc>', '配置描述')
+  .action(async (name, options) => {
+    try {
+      const manager = await createConfigManager();
+      await editProfileCommand(manager, name, options);
     } catch (error) {
       process.exit(1);
     }
@@ -188,6 +206,21 @@ keyCommand
     try {
       const manager = await createConfigManager();
       await keyRemoveCommand(manager, configName, keyIdOrAlias);
+    } catch (error) {
+      process.exit(1);
+    }
+  });
+
+// key edit 子命令
+keyCommand
+  .command('edit [config-name] [key-id-or-alias]')
+  .description('编辑配置的 API Key')
+  .option('-k, --api-key <key>', 'API Key')
+  .option('-a, --alias <alias>', 'Key 别名')
+  .action(async (configName, keyIdOrAlias, options) => {
+    try {
+      const manager = await createConfigManager();
+      await keyEditCommand(manager, configName, keyIdOrAlias, options);
     } catch (error) {
       process.exit(1);
     }

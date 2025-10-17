@@ -187,6 +187,14 @@ export class ConfigManager {
   }
 
   /**
+   * 获取活动配置名称
+   * @returns 活动配置名称
+   */
+  getActiveConfigName(): string {
+    return this.store.activeConfig;
+  }
+
+  /**
    * 为配置添加新的 API Key
    * @param configName 配置名称
    * @param apiKey API Key
@@ -298,6 +306,86 @@ export class ConfigManager {
     config.activeKeyId = key.id;
     key.lastUsed = new Date().toISOString();
     config.updatedAt = new Date().toISOString();
+
+    await this.save();
+    return true;
+  }
+
+  /**
+   * 更新配置中的 API Key
+   * @param configName 配置名称
+   * @param keyIdOrAlias Key ID 或别名
+   * @param updates 要更新的字段
+   * @returns 是否更新成功
+   */
+  async updateKey(
+    configName: string,
+    keyIdOrAlias: string,
+    updates: Partial<Pick<IApiKey, 'apiKey' | 'alias'>>
+  ): Promise<boolean> {
+    const config = this.getConfig(configName);
+
+    if (!config) {
+      throw new Error(`配置 "${configName}" 不存在`);
+    }
+
+    const key = config.keys.find(
+      k => k.id === keyIdOrAlias || k.alias === keyIdOrAlias
+    );
+
+    if (!key) {
+      throw new Error(`Key "${keyIdOrAlias}" 不存在`);
+    }
+
+    // 如果更新别名，检查是否与其他 key 冲突
+    if (updates.alias !== undefined && updates.alias !== key.alias) {
+      const aliasExists = config.keys.some(
+        k => k.id !== key.id && k.alias === updates.alias
+      );
+      if (aliasExists) {
+        throw new Error(`别名 "${updates.alias}" 已被使用`);
+      }
+    }
+
+    // 更新字段
+    if (updates.apiKey !== undefined) {
+      key.apiKey = updates.apiKey;
+    }
+    if (updates.alias !== undefined) {
+      key.alias = updates.alias || undefined;
+    }
+
+    config.updatedAt = new Date().toISOString();
+    await this.save();
+    return true;
+  }
+
+  /**
+   * 重命名配置
+   * @param oldName 旧配置名称
+   * @param newName 新配置名称
+   * @returns 是否重命名成功
+   */
+  async renameConfig(oldName: string, newName: string): Promise<boolean> {
+    const config = this.getConfig(oldName);
+
+    if (!config) {
+      throw new Error(`配置 "${oldName}" 不存在`);
+    }
+
+    // 检查新名称是否已存在
+    if (oldName !== newName && this.getConfig(newName)) {
+      throw new Error(`配置 "${newName}" 已存在`);
+    }
+
+    // 更新配置名称
+    config.name = newName;
+    config.updatedAt = new Date().toISOString();
+
+    // 如果是活动配置，更新引用
+    if (this.store.activeConfig === oldName) {
+      this.store.activeConfig = newName;
+    }
 
     await this.save();
     return true;
