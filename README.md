@@ -251,6 +251,16 @@ node dist/cli.js
 
 请参阅 [AGENTS.md](./AGENTS.md) 了解详细的开发规范。
 
+## 竞品分析与发展路线
+
+- [竞品分析报告（总览）](docs/analysis/competitive-analysis.md)
+- [claude-code-router 深度分析](docs/analysis/claude-code-router.md)
+- [其他项目与快速评估](docs/analysis/related-projects.md)
+- [功能对比矩阵](docs/analysis/comparison-matrix.md)
+- [UX/命令对比](docs/analysis/ux-and-commands.md)
+- [发展策略建议](docs/strategy/recommendation.md)
+- [技术实现参考](docs/tech/implementation-notes.md)
+
 ## 常见问题
 
 ### Q: 配置切换后为什么 Claude Code 没有生效？
