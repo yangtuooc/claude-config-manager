@@ -14,6 +14,15 @@ import {
   getActiveApiKey,
   generateKeyId
 } from './utils/config-helpers';
+import {
+  ConfigNotFoundError,
+  ConfigExistsError,
+  ApiKeyNotFoundError,
+  ApiKeyExistsError,
+  ConfigError,
+  FileError
+} from './utils/errors';
+import logger from './utils/logger';
 
 /**
  * 配置管理器类
@@ -43,7 +52,12 @@ export class ConfigManager {
       await this.load();
     } catch (error) {
       // 如果配置文件不存在，创建默认配置
-      await this.save();
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        logger.debug('配置文件不存在，创建默认配置');
+        await this.save();
+      } else {
+        throw new FileError('初始化配置管理器失败');
+      }
     }
   }
 
@@ -51,26 +65,43 @@ export class ConfigManager {
    * 从文件加载配置
    */
   async load(): Promise<void> {
-    const content = await fs.readFile(CONFIG_STORE_PATH, 'utf-8');
-    const rawStore = JSON.parse(content);
+    try {
+      const content = await fs.readFile(CONFIG_STORE_PATH, 'utf-8');
+      const rawStore = JSON.parse(content);
 
-    // 迁移所有配置到新格式
-    if (rawStore.configs && Array.isArray(rawStore.configs)) {
-      rawStore.configs = rawStore.configs.map((config: any) => migrateConfig(config));
+      // 迁移所有配置到新格式
+      if (rawStore.configs && Array.isArray(rawStore.configs)) {
+        const originalConfigsCount = rawStore.configs.length;
+        rawStore.configs = rawStore.configs.map((config: any) => migrateConfig(config));
+
+        if (originalConfigsCount > 0) {
+          logger.debug(`已加载 ${originalConfigsCount} 个配置`);
+        }
+      }
+
+      this.store = rawStore;
+
+      // 如果有迁移，保存新格式
+      await this.save();
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw error; // 让上层处理文件不存在的情况
+      }
+      throw new FileError(`加载配置失败: ${(error as Error).message}`);
     }
-
-    this.store = rawStore;
-
-    // 如果有迁移，保存新格式
-    await this.save();
   }
 
   /**
    * 保存配置到文件
    */
   async save(): Promise<void> {
-    const content = JSON.stringify(this.store, null, 2);
-    await fs.writeFile(CONFIG_STORE_PATH, content, 'utf-8');
+    try {
+      const content = JSON.stringify(this.store, null, 2);
+      await fs.writeFile(CONFIG_STORE_PATH, content, 'utf-8');
+      logger.debug('配置已保存');
+    } catch (error) {
+      throw new FileError(`保存配置失败: ${(error as Error).message}`);
+    }
   }
 
   /**
@@ -81,7 +112,7 @@ export class ConfigManager {
   async addConfig(config: Omit<IApiConfig, 'createdAt' | 'updatedAt' | 'keys'> & { apiKey?: string; keys?: IApiKey[] }): Promise<boolean> {
     // 检查是否已存在同名配置
     if (this.store.configs.some(c => c.name === config.name)) {
-      throw new Error(`配置 "${config.name}" 已存在`);
+      throw new ConfigExistsError(config.name);
     }
 
     const now = new Date().toISOString();
@@ -131,7 +162,7 @@ export class ConfigManager {
     const index = this.store.configs.findIndex(c => c.name === name);
 
     if (index === -1) {
-      throw new Error(`配置 "${name}" 不存在`);
+      throw new ConfigNotFoundError(name);
     }
 
     this.store.configs.splice(index, 1);
@@ -158,7 +189,7 @@ export class ConfigManager {
     const config = this.store.configs.find(c => c.name === name);
 
     if (!config) {
-      throw new Error(`配置 "${name}" 不存在`);
+      throw new ConfigNotFoundError(name);
     }
 
     Object.assign(config, updates, {
@@ -205,17 +236,17 @@ export class ConfigManager {
     const config = this.getConfig(configName);
 
     if (!config) {
-      throw new Error(`配置 "${configName}" 不存在`);
+      throw new ConfigNotFoundError(configName);
     }
 
     // 检查是否已存在相同的 API Key
     if (config.keys.some(k => k.apiKey === apiKey)) {
-      throw new Error('该 API Key 已存在');
+      throw new ApiKeyExistsError();
     }
 
     // 检查别名是否已被使用
     if (alias && config.keys.some(k => k.alias === alias)) {
-      throw new Error(`别名 "${alias}" 已被使用`);
+      throw new ApiKeyExistsError(`别名 "${alias}" 已被使用`);
     }
 
     const newKey: IApiKey = {
@@ -248,7 +279,7 @@ export class ConfigManager {
     const config = this.getConfig(configName);
 
     if (!config) {
-      throw new Error(`配置 "${configName}" 不存在`);
+      throw new ConfigNotFoundError(configName);
     }
 
     const index = config.keys.findIndex(
@@ -256,12 +287,12 @@ export class ConfigManager {
     );
 
     if (index === -1) {
-      throw new Error(`Key "${keyIdOrAlias}" 不存在`);
+      throw new ApiKeyNotFoundError(keyIdOrAlias);
     }
 
     // 不允许删除最后一个 Key
     if (config.keys.length === 1) {
-      throw new Error('不能删除最后一个 API Key');
+      throw new ConfigError('不能删除最后一个 API Key');
     }
 
     const removedKey = config.keys[index];
@@ -292,7 +323,7 @@ export class ConfigManager {
     const config = this.getConfig(configName);
 
     if (!config) {
-      throw new Error(`配置 "${configName}" 不存在`);
+      throw new ConfigNotFoundError(configName);
     }
 
     const key = config.keys.find(
@@ -300,7 +331,7 @@ export class ConfigManager {
     );
 
     if (!key) {
-      throw new Error(`Key "${keyIdOrAlias}" 不存在`);
+      throw new ApiKeyNotFoundError(keyIdOrAlias);
     }
 
     config.activeKeyId = key.id;
@@ -326,7 +357,7 @@ export class ConfigManager {
     const config = this.getConfig(configName);
 
     if (!config) {
-      throw new Error(`配置 "${configName}" 不存在`);
+      throw new ConfigNotFoundError(configName);
     }
 
     const key = config.keys.find(
@@ -334,7 +365,7 @@ export class ConfigManager {
     );
 
     if (!key) {
-      throw new Error(`Key "${keyIdOrAlias}" 不存在`);
+      throw new ApiKeyNotFoundError(keyIdOrAlias);
     }
 
     // 如果更新别名，检查是否与其他 key 冲突
@@ -343,7 +374,7 @@ export class ConfigManager {
         k => k.id !== key.id && k.alias === updates.alias
       );
       if (aliasExists) {
-        throw new Error(`别名 "${updates.alias}" 已被使用`);
+        throw new ApiKeyExistsError(`别名 "${updates.alias}" 已被使用`);
       }
     }
 
@@ -370,12 +401,12 @@ export class ConfigManager {
     const config = this.getConfig(oldName);
 
     if (!config) {
-      throw new Error(`配置 "${oldName}" 不存在`);
+      throw new ConfigNotFoundError(oldName);
     }
 
     // 检查新名称是否已存在
     if (oldName !== newName && this.getConfig(newName)) {
-      throw new Error(`配置 "${newName}" 已存在`);
+      throw new ConfigExistsError(newName);
     }
 
     // 更新配置名称
@@ -400,7 +431,7 @@ export class ConfigManager {
     const config = this.getConfig(configName);
 
     if (!config) {
-      throw new Error(`配置 "${configName}" 不存在`);
+      throw new ConfigNotFoundError(configName);
     }
 
     return [...config.keys];
@@ -460,11 +491,12 @@ export class ConfigManager {
     const config = this.getConfig(name);
 
     if (!config) {
-      throw new Error(`配置 "${name}" 不存在`);
+      throw new ConfigNotFoundError(name);
     }
 
     this.store.activeConfig = name;
     await this.save();
+    logger.debug(`活动配置已设置为: ${name}`);
     return true;
   }
 
@@ -479,7 +511,7 @@ export class ConfigManager {
     const config = this.getConfig(name);
 
     if (!config) {
-      throw new Error(`配置 "${name}" 不存在`);
+      throw new ConfigNotFoundError(name);
     }
 
     // 获取要使用的 API Key
@@ -487,7 +519,7 @@ export class ConfigManager {
     if (keyId) {
       const key = config.keys.find(k => k.id === keyId);
       if (!key) {
-        throw new Error(`Key ID "${keyId}" 不存在`);
+        throw new ApiKeyNotFoundError(keyId);
       }
       apiKey = key.apiKey;
     } else {
@@ -495,39 +527,48 @@ export class ConfigManager {
     }
 
     if (!apiKey) {
-      throw new Error(`配置 "${name}" 没有可用的 API Key`);
+      throw new ConfigError(`配置 "${name}" 没有可用的 API Key`);
     }
 
-    // 确保 Claude 配置目录存在
-    await fs.mkdir(CLAUDE_CONFIG_DIR, { recursive: true });
-
-    // 读取现有的 settings.json（如果存在）
-    let existingConfig: IClaudeConfig = {};
     try {
-      const content = await fs.readFile(CLAUDE_CONFIG_PATH, 'utf-8');
-      existingConfig = JSON.parse(content);
-    } catch (error) {
-      // 文件不存在，使用空对象
-    }
+      // 确保 Claude 配置目录存在
+      await fs.mkdir(CLAUDE_CONFIG_DIR, { recursive: true });
 
-    // 更新 env 字段，保留其他字段
-    const updatedConfig: IClaudeConfig = {
-      ...existingConfig,
-      env: {
-        ...existingConfig.env,
-        ANTHROPIC_BASE_URL: config.baseUrl,
-        ANTHROPIC_AUTH_TOKEN: apiKey
+      // 读取现有的 settings.json（如果存在）
+      let existingConfig: IClaudeConfig = {};
+      try {
+        const content = await fs.readFile(CLAUDE_CONFIG_PATH, 'utf-8');
+        existingConfig = JSON.parse(content);
+      } catch (error) {
+        // 文件不存在，使用空对象
+        logger.debug('Claude Code 配置文件不存在，将创建新文件');
       }
-    };
 
-    // 写入 Claude 配置文件
-    const content = JSON.stringify(updatedConfig, null, 2);
-    await fs.writeFile(CLAUDE_CONFIG_PATH, content, 'utf-8');
+      // 更新 env 字段，保留其他字段
+      const updatedConfig: IClaudeConfig = {
+        ...existingConfig,
+        env: {
+          ...existingConfig.env,
+          ANTHROPIC_BASE_URL: config.baseUrl,
+          ANTHROPIC_AUTH_TOKEN: apiKey
+        }
+      };
 
-    // 设置为活动配置
-    await this.setActiveConfig(name);
+      // 写入 Claude 配置文件
+      const content = JSON.stringify(updatedConfig, null, 2);
+      await fs.writeFile(CLAUDE_CONFIG_PATH, content, 'utf-8');
 
-    return true;
+      // 设置为活动配置
+      await this.setActiveConfig(name);
+
+      logger.debug(`配置 "${name}" 已应用到 Claude Code`);
+      return true;
+    } catch (error) {
+      if (error instanceof ConfigError) {
+        throw error;
+      }
+      throw new FileError(`应用配置到 Claude Code 失败: ${(error as Error).message}`);
+    }
   }
 
   /**

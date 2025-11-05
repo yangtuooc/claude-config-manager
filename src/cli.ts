@@ -11,6 +11,8 @@ import { removeCommand } from './commands/remove';
 import { updateCommand } from './commands/update';
 import { keyAddCommand, keyListCommand, keySwitchCommand, keyRemoveCommand, keyEditCommand } from './commands/key';
 import { editProfileCommand } from './commands/edit-profile';
+import { wrapCommand } from './utils/command-wrapper';
+import logger from './utils/logger';
 
 const program = new Command();
 
@@ -30,71 +32,34 @@ program
   .option('-t, --type <type>', '配置类型 (official|third-party|community)')
   .option('-d, --description <desc>', '配置描述')
   .option('--template <name>', '使用模板')
-  .action(async (options) => {
-    try {
-      const manager = await createConfigManager();
-      await addCommand(manager, options);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(addCommand));
 
 // list 命令 - 列出所有配置
 program
   .command('list')
   .alias('ls')
   .description('列出所有 API 配置')
-  .action(async () => {
-    try {
-      const manager = await createConfigManager();
-      await listCommand(manager);
-    } catch (error) {
-      console.log(chalk.red('列出配置失败'));
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(listCommand));
 
 // show 命令 - 显示配置详情
 program
   .command('show <name>')
   .description('显示配置详情')
-  .action(async (name) => {
-    try {
-      const manager = await createConfigManager();
-      await showCommand(manager, name);
-    } catch (error) {
-      console.log(chalk.red('显示配置详情失败'));
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(showCommand));
 
 // switch 命令 - 切换配置
 program
   .command('switch [name]')
   .alias('use')
   .description('切换 API 配置')
-  .action(async (name) => {
-    try {
-      const manager = await createConfigManager();
-      await switchCommand(manager, name);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(switchCommand));
 
 // remove 命令 - 删除配置
 program
   .command('remove [name]')
   .alias('rm')
   .description('删除 API 配置')
-  .action(async (name) => {
-    try {
-      const manager = await createConfigManager();
-      await removeCommand(manager, name);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(removeCommand));
 
 // edit 命令 - 编辑配置
 program
@@ -104,53 +69,33 @@ program
   .option('-u, --base-url <url>', 'Base URL')
   .option('-t, --type <type>', '配置类型 (official|third-party|community)')
   .option('-d, --description <desc>', '配置描述')
-  .action(async (name, options) => {
-    try {
-      const manager = await createConfigManager();
-      await editProfileCommand(manager, name, options);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(editProfileCommand));
 
 // templates 命令 - 列出可用模板
 program
   .command('templates')
   .description('列出可用的配置模板')
-  .action(async () => {
-    try {
-      await listTemplates();
-    } catch (error) {
-      console.log(chalk.red('列出模板失败'));
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(listTemplates, { requireManager: false }));
 
 // current 命令 - 显示当前活动配置
 program
   .command('current')
   .description('显示当前活动的配置')
-  .action(async () => {
-    try {
-      const manager = await createConfigManager();
-      const config = await manager.getActiveConfig();
+  .action(wrapCommand(async (manager) => {
+    const config = await manager.getActiveConfig();
 
-      if (!config) {
-        console.log(chalk.yellow('没有活动配置'));
-        console.log(chalk.gray('使用 "ccm switch" 激活一个配置'));
-        return;
-      }
-
-      console.log('\n' + chalk.bold('当前活动配置:') + '\n');
-      console.log(chalk.cyan('名称:       ') + chalk.bold(config.name));
-      console.log(chalk.cyan('Base URL:   ') + config.baseUrl);
-      console.log(chalk.cyan('类型:       ') + config.type);
-      console.log('');
-    } catch (error) {
-      console.log(chalk.red('获取当前配置失败'));
-      process.exit(1);
+    if (!config) {
+      logger.warn('没有活动配置');
+      logger.log(chalk.gray('使用 "ccm switch" 激活一个配置'));
+      return;
     }
-  });
+
+    logger.log('\n' + chalk.bold('当前活动配置:') + '\n');
+    logger.log(chalk.cyan('名称:       ') + chalk.bold(config.name));
+    logger.log(chalk.cyan('Base URL:   ') + config.baseUrl);
+    logger.log(chalk.cyan('类型:       ') + config.type);
+    logger.log('');
+  }));
 
 // key 命令 - 管理配置的多个 API Keys
 const keyCommand = program.command('key').description('管理配置的 API Keys');
@@ -161,55 +106,27 @@ keyCommand
   .description('为配置添加新的 API Key')
   .option('-k, --api-key <key>', 'API Key')
   .option('-a, --alias <alias>', 'Key 别名')
-  .action(async (configName, options) => {
-    try {
-      const manager = await createConfigManager();
-      await keyAddCommand(manager, configName, options);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(keyAddCommand));
 
 // key list 子命令
 keyCommand
   .command('list [config-name]')
   .alias('ls')
   .description('列出配置的所有 API Keys')
-  .action(async (configName) => {
-    try {
-      const manager = await createConfigManager();
-      await keyListCommand(manager, configName);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(keyListCommand));
 
 // key switch 子命令
 keyCommand
   .command('switch [config-name] [key-id-or-alias]')
   .description('切换配置的活动 API Key')
-  .action(async (configName, keyIdOrAlias) => {
-    try {
-      const manager = await createConfigManager();
-      await keySwitchCommand(manager, configName, keyIdOrAlias);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(keySwitchCommand));
 
 // key remove 子命令
 keyCommand
   .command('remove [config-name] [key-id-or-alias]')
   .alias('rm')
   .description('删除配置的 API Key')
-  .action(async (configName, keyIdOrAlias) => {
-    try {
-      const manager = await createConfigManager();
-      await keyRemoveCommand(manager, configName, keyIdOrAlias);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(keyRemoveCommand));
 
 // key edit 子命令
 keyCommand
@@ -217,26 +134,13 @@ keyCommand
   .description('编辑配置的 API Key')
   .option('-k, --api-key <key>', 'API Key')
   .option('-a, --alias <alias>', 'Key 别名')
-  .action(async (configName, keyIdOrAlias, options) => {
-    try {
-      const manager = await createConfigManager();
-      await keyEditCommand(manager, configName, keyIdOrAlias, options);
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(keyEditCommand));
 
 // update 命令 - 检查并安装更新
 program
   .command('update')
   .description('检查并安装最新版本')
-  .action(async () => {
-    try {
-      await updateCommand();
-    } catch (error) {
-      process.exit(1);
-    }
-  });
+  .action(wrapCommand(updateCommand, { requireManager: false }));
 
 // 解析命令行参数
 program.parse();

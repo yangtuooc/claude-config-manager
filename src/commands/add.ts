@@ -4,6 +4,8 @@ import { ConfigManager } from '../config-manager';
 import { ApiConfigType } from '../types';
 import { validateConfig } from '../utils/validator';
 import { CONFIG_TEMPLATES, DEFAULT_API_TYPE } from '../constants';
+import { ValidationError, UserCancelledError } from '../utils/errors';
+import logger from '../utils/logger';
 
 /**
  * 添加配置命令
@@ -30,9 +32,9 @@ export async function addCommand(
       if (template) {
         config.baseUrl = template.baseUrl;
         config.type = template.type;
-        console.log(chalk.blue(`使用模板: ${template.description}`));
+        logger.info(`使用模板: ${template.description}`);
       } else {
-        console.log(chalk.yellow(`模板 "${options.template}" 不存在，将手动输入`));
+        logger.warn(`模板 "${options.template}" 不存在，将手动输入`);
       }
     }
 
@@ -107,9 +109,7 @@ export async function addCommand(
     // 验证配置
     const validation = validateConfig(config);
     if (!validation.valid) {
-      console.log(chalk.red('配置验证失败:'));
-      validation.errors.forEach(error => console.log(chalk.red(`  - ${error}`)));
-      return;
+      throw new ValidationError(validation.errors);
     }
 
     // 最后确认
@@ -123,8 +123,7 @@ export async function addCommand(
     ]);
 
     if (!confirmAdd) {
-      console.log(chalk.gray('✖ 操作已取消'));
-      return;
+      throw new UserCancelledError();
     }
 
     // 添加配置
@@ -136,7 +135,7 @@ export async function addCommand(
       description: config.description
     });
 
-    console.log(chalk.green(`✓ 配置 "${config.name}" 已成功添加`));
+    logger.success(`配置 "${config.name}" 已成功添加`);
 
     // 询问是否立即应用
     const { apply } = await inquirer.prompt([
@@ -150,14 +149,10 @@ export async function addCommand(
 
     if (apply) {
       await manager.applyToClaudeCode(config.name!);
-      console.log(chalk.green(`✓ 配置已应用到 Claude Code`));
+      logger.success('配置已应用到 Claude Code');
     }
   } catch (error) {
-    if (error instanceof Error) {
-      console.log(chalk.red(`✗ ${error.message}`));
-    } else {
-      console.log(chalk.red('发生未知错误'));
-    }
+    // 错误将由命令包装器处理
     throw error;
   }
 }
@@ -166,11 +161,11 @@ export async function addCommand(
  * 列出可用的模板
  */
 export async function listTemplates(): Promise<void> {
-  console.log(chalk.bold('\n可用的配置模板:\n'));
+  logger.log(chalk.bold('\n可用的配置模板:\n'));
 
   CONFIG_TEMPLATES.forEach((template, index) => {
-    console.log(chalk.cyan(`${index + 1}. ${template.name}`));
-    console.log(`   ${template.description}`);
-    console.log(chalk.gray(`   Base URL: ${template.baseUrl}\n`));
+    logger.log(chalk.cyan(`${index + 1}. ${template.name}`));
+    logger.log(`   ${template.description}`);
+    logger.log(chalk.gray(`   Base URL: ${template.baseUrl}\n`));
   });
 }
